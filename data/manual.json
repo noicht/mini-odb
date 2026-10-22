@@ -1,0 +1,376 @@
+{
+  "vehicles": [
+    {
+      "id": "tiggo4-15t",
+      "name": "Chery Tiggo 4 Pro 1.5T",
+      "codes": {
+        "P0300": {
+          "description": "Fallo de encendido aleatorio o en varios cilindros",
+          "causes": [
+            {
+              "cause": "bujias",
+              "probability": 0.4
+            },
+            {
+              "cause": "toma-aire",
+              "probability": 0.25
+            },
+            {
+              "cause": "presion-combustible",
+              "probability": 0.2
+            }
+          ]
+        },
+        "P0301": {
+          "description": "Fallo de encendido en el cilindro 1",
+          "causes": [
+            {
+              "cause": "bobina-cil1",
+              "probability": 0.45
+            },
+            {
+              "cause": "bujias",
+              "probability": 0.3
+            },
+            {
+              "cause": "inyector-cil1",
+              "probability": 0.25
+            }
+          ]
+        },
+        "P0420": {
+          "description": "Eficiencia del catalizador por debajo del umbral (banco 1)",
+          "causes": [
+            {
+              "cause": "catalizador",
+              "probability": 0.55
+            },
+            {
+              "cause": "sonda-posterior",
+              "probability": 0.3
+            },
+            {
+              "cause": "sonda-anterior",
+              "probability": 0.15
+            }
+          ]
+        }
+      },
+      "causes": {
+        "bujias": {
+          "title": "Bujías desgastadas o con separación incorrecta",
+          "component": "Bujías",
+          "steps": [
+            {
+              "text": "Desmontar las bujías y medir la separación de los electrodos",
+              "expected": "0,7–0,8 mm"
+            },
+            {
+              "text": "Revisar el color y los depósitos del aislante",
+              "expected": "Gris claro, sin hollín ni aceite"
+            }
+          ]
+        },
+        "bobina-cil1": {
+          "title": "Bobina de encendido del cilindro 1 averiada",
+          "component": "Bobina de encendido cil. 1",
+          "steps": [
+            {
+              "text": "Intercambiar la bobina del cilindro 1 con la del 2 y borrar los códigos",
+              "expected": "Si la bobina es la causa, el fallo pasa a P0302"
+            },
+            {
+              "text": "Medir la resistencia del primario",
+              "expected": "0,5–0,8 Ω"
+            }
+          ]
+        },
+        "inyector-cil1": {
+          "title": "Inyector del cilindro 1 obstruido",
+          "component": "Inyector cil. 1",
+          "steps": [
+            {
+              "text": "Medir la resistencia del inyector",
+              "expected": "11–13 Ω"
+            },
+            {
+              "text": "Hacer la prueba de balance de inyectores con el equipo de diagnosis",
+              "expected": "Variación menor del 5 %"
+            }
+          ]
+        },
+        "toma-aire": {
+          "title": "Entrada de aire no medido después del caudalímetro",
+          "component": "Admisión",
+          "steps": [
+            {
+              "text": "Con el motor al ralentí, pulverizar limpiador de frenos sobre las juntas de admisión",
+              "expected": "Las RPM no varían"
+            },
+            {
+              "text": "Leer las correcciones de combustible a largo plazo (LTFT)",
+              "expected": "Entre −10 % y +10 %"
+            }
+          ]
+        },
+        "presion-combustible": {
+          "title": "Presión de combustible baja",
+          "component": "Bomba de combustible",
+          "steps": [
+            {
+              "text": "Medir la presión de baja con un manómetro",
+              "expected": "3,5–4,0 bar al ralentí"
+            }
+          ]
+        },
+        "catalizador": {
+          "title": "Catalizador con eficiencia baja",
+          "component": "Catalizador",
+          "steps": [
+            {
+              "text": "Comparar las señales de las sondas lambda anterior y posterior",
+              "expected": "La posterior estable en ~0,6 V; la anterior oscila entre 0,1 y 0,9 V"
+            }
+          ]
+        },
+        "sonda-posterior": {
+          "title": "Sonda lambda posterior defectuosa",
+          "component": "Sonda lambda posterior",
+          "steps": [
+            {
+              "text": "Acelerar a 2500 rpm y observar la respuesta de la sonda posterior",
+              "expected": "Reacciona en menos de 3 s"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "golf7-14tsi",
+      "name": "Volkswagen Golf VII 1.4 TSI",
+      "codes": {
+        "P0300": {
+          "description": "Fallo de encendido aleatorio o en varios cilindros",
+          "causes": [
+            {
+              "cause": "bobina-lapiz",
+              "probability": 0.45
+            },
+            {
+              "cause": "bujias",
+              "probability": 0.35
+            },
+            {
+              "cause": "carbonilla",
+              "probability": 0.2
+            }
+          ]
+        },
+        "P0171": {
+          "description": "Sistema demasiado pobre (banco 1)",
+          "causes": [
+            {
+              "cause": "toma-aire",
+              "probability": 0.4
+            },
+            {
+              "cause": "caudalimetro",
+              "probability": 0.35
+            },
+            {
+              "cause": "presion-combustible",
+              "probability": 0.25
+            }
+          ]
+        },
+        "P0420 ": {
+          "description": "Eficiencia del catalizador por debajo del umbral (banco 1)",
+          "causes": [
+            {
+              "cause": "catalizador",
+              "probability": 0.7
+            },
+            {
+              "cause": "sonda-posterior",
+              "probability": 0.3
+            }
+          ]
+        }
+      },
+      "causes": {
+        "bobina-lapiz": {
+          "title": "Bobina de encendido tipo lápiz con fisuras",
+          "component": "Bobinas de encendido",
+          "steps": [
+            {
+              "text": "Revisar el cuerpo de cada bobina buscando fisuras o marcas de arco",
+              "expected": "Sin fisuras ni marcas"
+            },
+            {
+              "text": "Intercambiar bobinas entre cilindros y ver si el fallo se mueve",
+              "expected": "El fallo sigue a la bobina defectuosa"
+            }
+          ]
+        },
+        "bujias": {
+          "title": "Bujías desgastadas",
+          "component": "Bujías",
+          "steps": [
+            {
+              "text": "Medir la separación de los electrodos",
+              "expected": "0,8–0,9 mm"
+            }
+          ]
+        },
+        "carbonilla": {
+          "title": "Depósitos de carbonilla en las válvulas de admisión",
+          "component": "Culata",
+          "steps": [
+            {
+              "text": "Inspeccionar las válvulas con un endoscopio por la toma de admisión",
+              "expected": "Sin depósitos visibles"
+            }
+          ]
+        },
+        "toma-aire": {
+          "title": "Fuga de vacío en el tubo de la válvula PCV",
+          "component": "Ventilación del cárter",
+          "steps": [
+            {
+              "text": "Revisar el tubo y la membrana de la válvula PCV",
+              "expected": "Sin fisuras; la membrana sella"
+            }
+          ]
+        },
+        "caudalimetro": {
+          "title": "Caudalímetro sucio o averiado",
+          "component": "Caudalímetro (MAF)",
+          "steps": [
+            {
+              "text": "Leer el caudal de aire al ralentí con el equipo de diagnosis",
+              "expected": "2,0–3,5 g/s"
+            }
+          ]
+        },
+        "presion-combustible": {
+          "title": "Presión de combustible baja",
+          "component": "Bomba de combustible",
+          "steps": [
+            {
+              "text": "Leer la presión de baja en los valores reales",
+              "expected": "5,5–6,5 bar"
+            }
+          ]
+        },
+        "catalizador": {
+          "title": "Catalizador con eficiencia baja",
+          "component": "Catalizador",
+          "steps": [
+            {
+              "text": "Comparar las señales de las sondas lambda anterior y posterior",
+              "expected": "La posterior estable; la anterior oscila"
+            }
+          ]
+        },
+        "sonda-posterior": {
+          "title": "Sonda lambda posterior defectuosa",
+          "component": "Sonda lambda posterior",
+          "steps": [
+            {
+              "text": "Medir el calefactor de la sonda",
+              "expected": "3–6 Ω"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "clio4-15dci",
+      "name": "Renault Clio IV 1.5 dCi",
+      "codes": {
+        "P0401": {
+          "description": "Flujo de recirculación de gases de escape (EGR) insuficiente",
+          "causes": [
+            {
+              "cause": "egr-obstruida",
+              "probability": 0.6
+            },
+            {
+              "cause": "sensor-egr",
+              "probability": 0.4
+            }
+          ]
+        },
+        "P0087": {
+          "description": "Presión del rail de combustible demasiado baja",
+          "causes": [
+            {
+              "cause": "filtro-gasoil",
+              "probability": 0.5
+            },
+            {
+              "cause": "bomba-alta",
+              "probability": 0.3
+            },
+            {
+              "cause": "regulador-presion",
+              "probability": 0.2
+            }
+          ]
+        }
+      },
+      "causes": {
+        "egr-obstruida": {
+          "title": "Válvula EGR obstruida por carbonilla",
+          "component": "Válvula EGR",
+          "steps": [
+            {
+              "text": "Desmontar la válvula EGR y revisar el conducto",
+              "expected": "Conducto libre, la válvula abre del todo"
+            }
+          ]
+        },
+        "sensor-egr": {
+          "title": "Sensor de posición de la EGR defectuoso",
+          "component": "Válvula EGR",
+          "steps": [
+            {
+              "text": "Comandar la apertura de la EGR con el equipo de diagnosis y leer la posición",
+              "expected": "La posición real sigue a la comandada (±5 %)"
+            }
+          ]
+        },
+        "filtro-gasoil": {
+          "title": "Filtro de gasoil obstruido",
+          "component": "Filtro de combustible",
+          "steps": [
+            {
+              "text": "Medir la depresión antes de la bomba de alta",
+              "expected": "Menos de 0,2 bar"
+            }
+          ]
+        },
+        "bomba-alta": {
+          "title": "Bomba de alta presión desgastada",
+          "component": "Bomba de alta presión",
+          "steps": [
+            {
+              "text": "Medir el caudal de retorno de los inyectores",
+              "expected": "Dentro de la tabla del fabricante"
+            }
+          ]
+        },
+        "regulador-presion": {
+          "title": "Regulador de presión del rail defectuoso",
+          "component": "Regulador de presión",
+          "steps": [
+            {
+              "text": "Comparar la presión real con la consigna en arranque",
+              "expected": "Diferencia menor de 50 bar"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
