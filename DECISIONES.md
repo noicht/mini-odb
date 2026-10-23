@@ -1,6 +1,6 @@
 # Decisiones
 
-**Tiempo que tardé:** -> 16 minutos, 40 segundos. (aclaro que me pase del tiempo orientativo para revisar y corregir.)
+**Tiempo que tardé:** -> 36 minutos aproximadamente. (aclaro que me pase del tiempo orientativo para revisar y corregir lo que no sale en el video pero esta contemplado en el transcript del agente)
 
 ## Causa compartida entre dos códigos
 
