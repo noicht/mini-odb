@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mini-OBD: probador</title>
+<style>
+  :root { --bg:#fff; --fg:#1d2433; --mut:#667085; --line:#d9dee7; --acc:#1a56db; --bar:#a9c1f2; --err:#b42318; --warn:#b54708; color-scheme: light dark; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#14171f; --fg:#e6e9f0; --mut:#98a2b3; --line:#2b3140; --acc:#7aa2ff; --bar:#35507f; --err:#f97066; --warn:#fdb022; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.5 system-ui, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 1.4rem; margin: 0 0 16px; }
+  label { display:block; font-weight:600; margin: 14px 0 4px; }
+  select, input, textarea, button { font: inherit; color: inherit; background: var(--bg); border:1px solid var(--line); border-radius:6px; padding:8px 10px; }
+  select, input, textarea { width:100%; }
+  textarea { font-family: ui-monospace, Menlo, Consolas, monospace; font-size:.9rem; }
+  button { cursor:pointer; background:var(--acc); color:#fff; border-color:var(--acc); }
+  button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible, .chip:focus-visible { outline:2px solid var(--acc); outline-offset:2px; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .chip { background:transparent; color:var(--fg); border-color:var(--line); padding:2px 10px; font-size:.9rem; }
+  .row { display:flex; gap:8px; align-items:center; margin-top:12px; flex-wrap:wrap; }
+  .hint { color:var(--mut); font-size:.9rem; }
+  #out { margin-top:24px; }
+  .error { color:var(--err); font-weight:600; border:1px solid var(--err); border-radius:6px; padding:10px 12px; }
+  .warn { color:var(--warn); border:1px solid var(--warn); border-radius:6px; padding:8px 12px; margin-bottom:16px; font-size:.9rem; }
+  .warn ul { margin:6px 0 0; padding-left:20px; }
+  .cause { border-top:1px solid var(--line); padding:14px 0; }
+  .cause h3 { margin:0; font-size:1.05rem; }
+  .meta { color:var(--mut); font-size:.9rem; }
+  .bar { height:8px; background:var(--line); border-radius:4px; margin:8px 0 6px; overflow:hidden; }
+  .bar > div { height:100%; background:var(--bar); }
+  ol { margin:8px 0 0; padding-left: 20px; }
+  details { margin-top:18px; }
+  summary { cursor:pointer; color:var(--mut); }
+  pre { overflow-x:auto; background:color-mix(in srgb, var(--fg) 6%, transparent); padding:10px; border-radius:6px; font-size:.85rem; }
+  .nf { color:var(--err); }
+  .excluded { margin-top:24px; padding:12px; background:color-mix(in srgb, var(--fg) 6%, transparent); border-radius:6px; }
+  .excluded h3 { margin:0 0 8px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Mini-OBD: probador</h1>
+
+  <div id="manualStatus"></div>
+
+  <label for="vehicle">Vehículo</label>
+  <select id="vehicle"></select>
+
+  <label for="codes">Códigos (separados por coma o espacio)</label>
+  <input id="codes" value="P0301, P0300" autocomplete="off" spellcheck="false">
+  <div class="chips" id="chips" aria-label="Códigos del manual para este vehículo"></div>
+  <p class="hint">Probá minúsculas, repetidos y códigos que no existen, como p0301 o P9999. Después descartá causas para ver cómo salta a la siguiente.</p>
+
+  <div class="row"><button id="go">Diagnosticar</button></div>
+
+  <details>
+    <summary>Enviar JSON crudo (para entradas inválidas)</summary>
+    <div class="chips" id="presets" aria-label="Ejemplos de entradas inválidas"></div>
+    <label for="raw">Cuerpo de la llamada a diagnose</label>
+    <textarea id="raw" rows="4" spellcheck="false">{"vehicleId":"tiggo4-15t","codes":null}</textarea>
+    <div class="row"><button id="goRaw">Enviar JSON</button></div>
+  </details>
+
+  <section id="out" aria-live="polite"></section>
+  <details id="jsonBox" hidden><summary>Respuesta completa (JSON)</summary><pre id="json"></pre></details>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let vehicles = [];
+let excludedCauses = [];
+const causeTitles = new Map(); // id -> título, para mostrar las descartadas con nombre
+
+const PRESETS = [
+  ['codes: null',            '{"vehicleId":"tiggo4-15t","codes":null}'],
+  ['código solo espacios',   '{"vehicleId":"tiggo4-15t","codes":["   "]}'],
+  ['código con espacios',    '{"vehicleId":"golf7-14tsi","codes":["  p0420  "]}'],
+  ['código no string',       '{"vehicleId":"tiggo4-15t","codes":[123]}'],
+  ['excludedCauses: string', '{"vehicleId":"tiggo4-15t","codes":["P0301"],"excludedCauses":"bujias"}'],
+  ['excludedCauses: [null]', '{"vehicleId":"tiggo4-15t","codes":["P0301"],"excludedCauses":[null]}'],
+  ['excluir id inexistente', '{"vehicleId":"tiggo4-15t","codes":["P0301"],"excludedCauses":["no-existe"]}'],
+];
+
+async function init() {
+  vehicles = await (await fetch('/api/vehicles')).json();
+  $('vehicle').innerHTML = vehicles.map(v => `<option value="${esc(v.id)}">${esc(v.name)} (${esc(v.id)})</option>`).join('');
+  $('vehicle').onchange = () => { excludedCauses = []; $('out').innerHTML = ''; $('jsonBox').hidden = true; renderChips(); };
+  $('presets').innerHTML = PRESETS.map(([label, json], i) => `<button type="button" class="chip" data-preset="${i}">${esc(label)}</button>`).join('');
+  renderChips();
+
+  const { warnings } = await (await fetch('/api/manual-status')).json();
+  if (warnings.length) {
+    $('manualStatus').innerHTML = `<div class="warn"><strong>Manual con ${warnings.length} referencia(s) rota(s)</strong> (se saltean al diagnosticar):
+      <ul>${warnings.map(w => `<li>${esc(w)}</li>`).join('')}</ul></div>`;
+  }
+}
+
+function renderChips() {
+  const v = vehicles.find(x => x.id === $('vehicle').value);
+  $('chips').innerHTML = v ? v.codes.map(c => `<button type="button" class="chip" data-code="${esc(c)}">${esc(c)}</button>`).join('') : '';
+}
+
+$('chips').onclick = e => {
+  const c = e.target.dataset.code;
+  if (!c) return;
+  const cur = $('codes').value.trim();
+  $('codes').value = cur ? `${cur}, ${c}` : c;
+};
+
+$('presets').onclick = e => {
+  const i = e.target.dataset.preset;
+  if (i === undefined) return;
+  $('raw').value = PRESETS[i][1];
+};
+
+async function post(payload) {
+  $('jsonBox').hidden = true;
+  const res = await fetch('/api/diagnose', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+  const data = await res.json();
+  $('json').textContent = JSON.stringify(data, null, 2);
+  $('jsonBox').hidden = false;
+  if (!res.ok) { $('out').innerHTML = `<div class="error">${esc(data.error)}</div>`; return; }
+  render(data);
+}
+
+function render(r) {
+  r.causes.forEach(c => causeTitles.set(c.id, c.title));
+
+  const found = r.codes.map(c => `<li><strong>${esc(c.code)}</strong>: ${esc(c.description)}</li>`).join('');
+  const nf = r.notFound.length ? `<p class="nf">No están en el manual: ${r.notFound.map(esc).join(', ')}</p>` : '';
+  const causes = r.causes.map((c, i) => `
+    <div class="cause">
+      <h3>${i + 1}. ${esc(c.title)}</h3>
+      <div class="meta">${esc(c.component)} · códigos: ${c.codes.map(esc).join(', ')}</div>
+      <div class="bar"><div style="width:${(c.probability * 100).toFixed(1)}%"></div></div>
+      <div><strong>${(c.probability * 100).toFixed(1)} %</strong> <span class="meta">(${esc(c.probability)}) · id: ${esc(c.id)}</span></div>
+      <div class="row"><button type="button" class="chip" data-exclude="${esc(c.id)}">Descartar esta causa</button></div>
+      <ol>${c.steps.map(s => `<li>${esc(s.text)}<br><span class="meta">Esperado: ${esc(s.expected)}</span></li>`).join('')}</ol>
+    </div>`).join('');
+
+  const excluded = excludedCauses.length ? `
+    <div class="excluded">
+      <h3>Causas descartadas</h3>
+      <p class="hint" style="margin:0 0 8px;">Las probabilidades de las demás no cambian: solo sube su posición.</p>
+      <div class="chips">${excludedCauses.map(id => `<button type="button" class="chip" data-restore="${esc(id)}" title="Volver a considerar">↻ ${esc(causeTitles.get(id) || id)}</button>`).join('')}</div>
+      <div class="row"><button type="button" id="clearExcluded">Limpiar todas</button></div>
+    </div>` : '';
+
+  const empty = excludedCauses.length && !r.causes.length && r.codes.length
+    ? '<p class="meta">Descartaste todas las causas de estos códigos. Los códigos siguen encontrados, pero ya no hay causas que revisar.</p>'
+    : '<p class="meta">Sin causas para mostrar.</p>';
+
+  $('out').innerHTML = `<h2>${esc(r.vehicle)}</h2>
+    ${found ? `<ul>${found}</ul>` : '<p class="meta">Ningún código encontrado.</p>'}
+    ${nf}
+    ${causes || empty}
+    ${excluded}`;
+
+  document.querySelectorAll('[data-exclude]').forEach(btn => {
+    btn.onclick = () => {
+      if (!excludedCauses.includes(btn.dataset.exclude)) excludedCauses.push(btn.dataset.exclude);
+      refreshDiagnosis();
+    };
+  });
+  document.querySelectorAll('[data-restore]').forEach(btn => {
+    btn.onclick = () => {
+      excludedCauses = excludedCauses.filter(id => id !== btn.dataset.restore);
+      refreshDiagnosis();
+    };
+  });
+  if ($('clearExcluded')) {
+    $('clearExcluded').onclick = () => { excludedCauses = []; refreshDiagnosis(); };
+  }
+}
+
+function refreshDiagnosis() {
+  const codes = $('codes').value.split(/[,\s]+/).filter(Boolean);
+  post({ vehicleId: $('vehicle').value, codes, excludedCauses });
+}
+
+$('go').onclick = () => {
+  excludedCauses = []; // diagnóstico nuevo: se reinician las causas descartadas
+  const codes = $('codes').value.split(/[,\s]+/).filter(Boolean);
+  // Los espacios dentro de un código no se pueden escribir acá; usá el JSON crudo para eso.
+  post({ vehicleId: $('vehicle').value, codes, excludedCauses });
+};
+$('goRaw').onclick = () => {
+  try { post(JSON.parse($('raw').value)); }
+  catch (e) { $('out').innerHTML = `<div class="error">JSON inválido: ${esc(e.message)}</div>`; }
+};
+init();
+</script>
+</body>
+</html>

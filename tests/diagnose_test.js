@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { diagnose } from './diagnose.js';
+import { diagnose } from '../diagnose.js';
 
 test('devuelve las causas de un código, de la más a la menos probable', () => {
   const r = diagnose({ vehicleId: 'tiggo4-15t', codes: ['P0301'] });
@@ -35,15 +35,14 @@ test('independencia del orden de los códigos', () => {
   assert.deepEqual(r1, r2);
 });
 
-test('causa compartida combina probabilidades con noisy-or', () => {
+test('causa compartida toma el máximo de las probabilidades', () => {
   const r = diagnose({ vehicleId: 'tiggo4-15t', codes: ['P0301', 'P0300'] });
   const bujias = r.causes.find(c => c.id === 'bujias');
   assert.ok(bujias);
   assert.equal(bujias.codes.length, 2);
   assert.ok(bujias.codes.includes('P0301'));
   assert.ok(bujias.codes.includes('P0300'));
-  // noisy-or: 1 - (1-0.3) * (1-0.4) = 1 - 0.7 * 0.6 = 0.58
-  assert.equal(Math.round(bujias.probability * 100) / 100, 0.58);
+  assert.equal(bujias.probability, 0.4);
 });
 
 test('código desconocido va a notFound', () => {
@@ -67,13 +66,10 @@ test('lista vacía de códigos', () => {
   assert.deepEqual(r.causes, []);
 });
 
-test('codes inválido se trata como array vacío', () => {
-  const r1 = diagnose({ vehicleId: 'tiggo4-15t', codes: null });
-  const r2 = diagnose({ vehicleId: 'tiggo4-15t', codes: undefined });
-  const r3 = diagnose({ vehicleId: 'tiggo4-15t', codes: 'P0301' });
-  assert.deepEqual(r1.codes, []);
-  assert.deepEqual(r2.codes, []);
-  assert.deepEqual(r3.codes, []);
+test('codes que no es un array lanza error', () => {
+  assert.throws(() => diagnose({ vehicleId: 'tiggo4-15t', codes: null }), /array/);
+  assert.throws(() => diagnose({ vehicleId: 'tiggo4-15t', codes: undefined }), /array/);
+  assert.throws(() => diagnose({ vehicleId: 'tiggo4-15t', codes: 'P0301' }), /array/);
 });
 
 test('segundo vehículo funciona correctamente', () => {
@@ -87,4 +83,57 @@ test('códigos duplicados se manejan correctamente', () => {
   assert.equal(r.codes.length, 2);
   assert.deepEqual(r.codes.map(c => c.code), ['P0300', 'P0301']);
   assert.deepEqual(r.notFound, []);
+});
+
+test('todos los códigos desconocidos', () => {
+  const r = diagnose({ vehicleId: 'tiggo4-15t', codes: ['P9999', 'P8888'] });
+  assert.deepEqual(r.codes, []);
+  assert.deepEqual(r.causes, []);
+  assert.deepEqual(r.notFound, ['P8888', 'P9999']);
+});
+
+test('un código existe en un vehículo pero no en otro', () => {
+  const r = diagnose({ vehicleId: 'tiggo4-15t', codes: ['P0171'] });
+  assert.deepEqual(r.notFound, ['P0171']);
+});
+
+test('excludedCauses filtra causas ya revisadas', () => {
+  const r1 = diagnose({ vehicleId: 'tiggo4-15t', codes: ['P0301'] });
+  assert.deepEqual(r1.causes.map(c => c.id), ['bobina-cil1', 'bujias', 'inyector-cil1']);
+  const r2 = diagnose({ vehicleId: 'tiggo4-15t', codes: ['P0301'], excludedCauses: ['bobina-cil1'] });
+  assert.deepEqual(r2.causes.map(c => c.id), ['bujias', 'inyector-cil1']);
+  const r3 = diagnose({ vehicleId: 'tiggo4-15t', codes: ['P0301'], excludedCauses: ['bobina-cil1', 'bujias'] });
+  assert.deepEqual(r3.causes.map(c => c.id), ['inyector-cil1']);
+});
+
+test('excludedCauses que no es un array lanza error', () => {
+  assert.throws(() => diagnose({ vehicleId: 'tiggo4-15t', codes: ['P0301'], excludedCauses: null }), /array/);
+  assert.throws(() => diagnose({ vehicleId: 'tiggo4-15t', codes: ['P0301'], excludedCauses: 'bujias' }), /array/);
+});
+
+test('código en minúsculas se normaliza', () => {
+  const r = diagnose({ vehicleId: 'tiggo4-15t', codes: ['p0301'] });
+  assert.deepEqual(r.codes.map(c => c.code), ['P0301']);
+  assert.deepEqual(r.notFound, []);
+});
+
+test('espacios y minúsculas a la vez', () => {
+  const r = diagnose({ vehicleId: 'tiggo4-15t', codes: ['  p0301  '] });
+  assert.equal(r.codes[0].code, 'P0301');
+  assert.deepEqual(r.notFound, []);
+});
+
+test('duplicados con distinta forma cuentan una sola vez', () => {
+  const r = diagnose({ vehicleId: 'tiggo4-15t', codes: ['P0301', 'p0301', ' P0301 '] });
+  assert.equal(r.codes.length, 1);
+});
+
+test('código desconocido en minúsculas va a notFound normalizado', () => {
+  const r = diagnose({ vehicleId: 'tiggo4-15t', codes: [' p9999 '] });
+  assert.deepEqual(r.notFound, ['P9999']);
+});
+
+test('código vacío o solo espacios lanza error', () => {
+  assert.throws(() => diagnose({ vehicleId: 'tiggo4-15t', codes: ['   '] }), /vacío/);
+  assert.throws(() => diagnose({ vehicleId: 'tiggo4-15t', codes: [''] }), /vacío/);
 });
