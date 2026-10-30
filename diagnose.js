@@ -8,7 +8,9 @@ const { errors, warnings } = validateManual(rawManual);
 if (errors.length > 0) {
   throw new Error(`Manual con errores:\n${errors.map(e => `  - ${e}`).join('\n')}`);
 }
-for (const w of warnings) console.warn(`[manual] ${w}`);
+for (const w of warnings) {
+  console.warn(`[manual] ${w}`);
+}
 
 // Normalizar claves de códigos (trim + mayúsculas, igual que la entrada)
 const manual = {
@@ -113,7 +115,7 @@ export function diagnose({ vehicleId, codes, excludedCauses = [] }) {
           id: causeId,
           title: causeDef.title,
           component: causeDef.component,
-          steps: [...causeDef.steps],
+          steps: causeDef.steps.map(step => ({ ...step })),
           probability: causeRef.probability,
           codes: [codeKey]
         });

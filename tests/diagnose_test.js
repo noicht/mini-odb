@@ -137,3 +137,59 @@ test('código vacío o solo espacios lanza error', () => {
   assert.throws(() => diagnose({ vehicleId: 'tiggo4-15t', codes: ['   '] }), /vacío/);
   assert.throws(() => diagnose({ vehicleId: 'tiggo4-15t', codes: [''] }), /vacío/);
 });
+
+
+test('modificar el resultado no contamina el manual', () => {
+  const a = diagnose({ vehicleId: 'tiggo4-15t', codes: ['P0301'] });
+  a.causes[0].steps[0].text = 'MUTADO';
+  a.causes[0].steps.push({ text: 'x', expected: 'y' });
+  const b = diagnose({ vehicleId: 'tiggo4-15t', codes: ['P0301'] });
+  assert.equal(b.causes[0].steps.length, 2);
+  assert.notEqual(b.causes[0].steps[0].text, 'MUTADO');
+});
+
+test('empate de probabilidad se desempata por id', () => {
+  const r = diagnose({ vehicleId: 'tiggo4-15t', codes: ['P0300', 'P0301'] });
+  assert.deepEqual(r.causes.map(c => c.id),
+    ['bobina-cil1', 'bujias', 'inyector-cil1', 'toma-aire', 'presion-combustible']);
+});
+
+test('excluir no altera las probabilidades de las demás', () => {
+  const r = diagnose({ vehicleId: 'tiggo4-15t', codes: ['P0301'], excludedCauses: ['bujias'] });
+  assert.deepEqual(r.causes.map(c => [c.id, c.probability]), [['bobina-cil1', 0.45], ['inyector-cil1', 0.25]]);
+});
+
+test('excluir una causa compartida la saca de todos los códigos', () => {
+  const r = diagnose({ vehicleId: 'tiggo4-15t', codes: ['P0300', 'P0301'], excludedCauses: ['bujias'] });
+  assert.ok(!r.causes.some(c => c.id === 'bujias'));
+  assert.equal(r.codes.length, 2);
+});
+
+test('excluir todas las causas deja causes vacío y el código encontrado', () => {
+  const r = diagnose({ vehicleId: 'tiggo4-15t', codes: ['P0301'], excludedCauses: ['bobina-cil1', 'bujias', 'inyector-cil1'] });
+  assert.deepEqual(r.causes, []);
+  assert.equal(r.codes.length, 1);
+});
+
+test('el orden de excludedCauses no importa', () => {
+  const a = diagnose({ vehicleId: 'tiggo4-15t', codes: ['P0300'], excludedCauses: ['bujias', 'toma-aire'] });
+  const b = diagnose({ vehicleId: 'tiggo4-15t', codes: ['P0300'], excludedCauses: ['toma-aire', 'bujias'] });
+  assert.deepEqual(a, b);
+});
+
+test('excluir un id inexistente se ignora', () => {
+  const sin = diagnose({ vehicleId: 'tiggo4-15t', codes: ['P0301'] });
+  const con = diagnose({ vehicleId: 'tiggo4-15t', codes: ['P0301'], excludedCauses: ['no-existe'] });
+  assert.deepEqual(con, sin);
+});
+
+test('excludedCauses con elemento no string lanza error', () => {
+  assert.throws(() => diagnose({ vehicleId: 'tiggo4-15t', codes: ['P0301'], excludedCauses: [null] }), /inválida/);
+  assert.throws(() => diagnose({ vehicleId: 'tiggo4-15t', codes: ['P0301'], excludedCauses: [123] }), /inválida/);
+});
+
+test('tercer vehículo (Clio) funciona', () => {
+  const r = diagnose({ vehicleId: 'clio4-15dci', codes: ['P0087', 'P0401'] });
+  assert.deepEqual(r.causes.map(c => [c.id, c.probability]),
+    [['egr-obstruida', 0.6], ['filtro-gasoil', 0.5], ['sensor-egr', 0.4], ['bomba-alta', 0.3], ['regulador-presion', 0.2]]);
+});
